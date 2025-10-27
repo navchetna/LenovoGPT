@@ -23,6 +23,18 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from mongo_client import mongo_client
 import tiktoken
 
+
+
+#=======================================
+from passlib.context import CryptContext
+import jwt
+from datetime import timedelta
+#===================================================================================
+
+
+
+
+
 load_dotenv()
 MONGO_USERNAME = os.getenv("MONGO_USERNAME")
 MONGO_PASSWORD = os.getenv("MONGO_PASSWORD")
@@ -43,6 +55,12 @@ LLM_SERVER_PORT = int(os.getenv("LLM_SERVER_PORT", 80))
 LLM_MODEL = os.getenv("LLM_MODEL_ID", "meta-llama/Meta-Llama-3.1-8B-Instruct")
 
 TOKEN_ENCODING = tiktoken.get_encoding("cl100k_base")
+# ==========================================================
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+JWT_SECRET = os.getenv("JWT_SECRET", "your-secret-key-change-this")
+# ==========================================================
+
+
 
 def align_inputs(self, inputs, cur_node, runtime_graph, llm_parameters_dict, **kwargs):
     if self.services[cur_node].service_type == ServiceType.EMBEDDING:
@@ -311,6 +329,35 @@ class ConversationRequest(BaseModel):
     top_k: Optional[int] = 5
     collection_name: Optional[str] = None
     include_metrics: Optional[bool] = False
+
+# =================================================================
+
+
+class UserCreate(BaseModel):
+    name: str
+    email: str
+    password: str
+    departments: List[str]
+    role: str
+
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+
+class UserResponse(BaseModel):
+    id: str
+    name: str
+    email: str
+    departments: List[str]
+    role: str
+    status: str
+    created_at: datetime
+# ====================================================
+
+
+
 
 
 class ConversationResponse(BaseModel):
@@ -667,6 +714,48 @@ class ConversationRAGService(ChatQnAService):
             print(f"Error connecting to MongoDB: {str(e)}")
             raise Exception("Failed to connect to MongoDB")
     
+    # Password management methods
+    def hash_password(self, password: str) -> str:
+        return pwd_context.hash(password)
+
+    def verify_password(self, plain_password: str, hashed_password: str) -> bool:
+        return pwd_context.verify(plain_password, hashed_password)
+
+    def create_default_admin_sync(self):
+        """Create default admin user if none exists (synchronous version)"""
+        try:
+            db = self.mongo_client['railtel-db']
+            users_collection = db["users"]
+            
+            # Check if any admin user exists
+            admin_exists = users_collection.find_one({"role": "admin"})
+            
+            if not admin_exists:
+                # Create default admin
+                default_admin = {
+                    "id": str(uuid4()),
+                    "name": "System Administrator",
+                    "email": "admin@railtel.com",
+                    "password_hash": self.hash_password("admin123"),
+                    "departments": ["hr", "finance", "operations"],
+                    "role": "admin",
+                    "status": "Active",
+                    "created_at": datetime.now(),
+                    "updated_at": datetime.now()
+                }
+                
+                users_collection.insert_one(default_admin)
+                print("✅ Default admin user created:")
+                print("   Email: admin@railtel.com")
+                print("   Password: admin123")
+                print("   Please change this password after first login!")
+            else:
+                print("✅ Admin user already exists")
+                
+        except Exception as e:
+            print(f"Error creating default admin: {str(e)}")
+
+    # Conversation management methods
     async def handle_new_conversation(self, request: Request):
         try:
             data = await request.json()
@@ -1112,6 +1201,297 @@ class ConversationRAGService(ChatQnAService):
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
+    # File management methods
+    async def handle_get_uploaded_files(self, request: Request):
+        """
+        Get list of uploaded files from Qdrant collections
+        Query params: db_name (required), collection_name (optional)
+        """
+        try:
+            query_params = dict(request.query_params)
+            db_name = query_params.get("db_name")
+            collection_name = query_params.get("collection_name")
+            
+            if not db_name:
+                raise HTTPException(status_code=400, detail="Missing required query parameter 'db_name'")
+            
+            db = self.mongo_client[db_name]
+            uploads_collection = db["file_uploads"]
+            
+            query = {}
+            if collection_name:
+                query["collection_name"] = collection_name
+            
+            files_cursor = uploads_collection.find(query, {'_id': 0}).sort('upload_date', -1)
+            files_list = list(files_cursor)
+            
+            serialized_files = self.serialize_datetime(files_list)
+            
+            return JSONResponse(content={
+                "files": serialized_files,
+                "total": len(serialized_files)
+            })
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"Error fetching uploaded files: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+    async def handle_record_file_upload(self, request: Request):
+        """
+        Record file upload metadata in MongoDB
+        This should be called after successful upload to Qdrant
+        """
+        try:
+            data = await request.json()
+            
+            required_fields = ["file_name", "collection_name", "file_size", "db_name"]
+            for field in required_fields:
+                if field not in data:
+                    raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+            
+            db = self.mongo_client[data["db_name"]]
+            uploads_collection = db["file_uploads"]
+            
+            file_record = {
+                "id": str(uuid4()),
+                "file_name": data["file_name"],
+                "collection_name": data["collection_name"],
+                "file_size": data["file_size"],
+                "upload_date": datetime.now(),
+                "upload_status": "success",
+                "metadata": data.get("metadata", {})
+            }
+            
+            uploads_collection.insert_one(file_record)
+            
+            file_record.pop('_id', None)
+            serialized_record = self.serialize_datetime(file_record)
+            
+            return JSONResponse(content={
+                "message": "File upload recorded successfully",
+                "file_record": serialized_record
+            })
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"Error recording file upload: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+    # User management methods
+    async def handle_create_user(self, request: Request):
+        try:
+            data = await request.json()
+            user_data = UserCreate.parse_obj(data)
+            
+            db_name = data.get("db_name", "railtel-db")
+            db = self.mongo_client[db_name]
+            users_collection = db["users"]
+            
+            existing_user = users_collection.find_one({"email": user_data.email})
+            if existing_user:
+                raise HTTPException(status_code=400, detail="User with this email already exists")
+            
+            if len(user_data.password) < 6:
+                raise HTTPException(status_code=400, detail="Password must be at least 6 characters long")
+            
+            user_doc = {
+                "id": str(uuid4()),
+                "name": user_data.name,
+                "email": user_data.email,
+                "password_hash": self.hash_password(user_data.password),
+                "departments": user_data.departments,
+                "role": user_data.role,
+                "status": "Active",
+                "created_at": datetime.now(),
+                "updated_at": datetime.now()
+            }
+            
+            users_collection.insert_one(user_doc)
+            
+            user_doc.pop('_id', None)
+            user_doc.pop('password_hash', None)
+            
+            return JSONResponse(content={
+                "message": "User created successfully",
+                "user": self.serialize_datetime(user_doc)
+            })
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"Error creating user: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+    async def handle_login(self, request: Request):
+        try:
+            data = await request.json()
+            print(f"DEBUG: Login attempt with data: {data}")
+            
+            login_data = UserLogin.parse_obj(data)
+            print(f"DEBUG: Parsed login data - email: {login_data.email}")
+            
+            db_name = data.get("db_name", "railtel-db")
+            print(f"DEBUG: Using database: {db_name}")
+            
+            db = self.mongo_client[db_name]
+            users_collection = db["users"]
+            
+            # Check if collection exists and has users
+            user_count = users_collection.count_documents({})
+            print(f"DEBUG: Total users in collection: {user_count}")
+            
+            # Find user by email
+            user = users_collection.find_one({"email": login_data.email})
+            print(f"DEBUG: User found: {user is not None}")
+            
+            if not user:
+                print(f"DEBUG: No user found with email: {login_data.email}")
+                # Let's see what users actually exist
+                all_users = list(users_collection.find({}, {"email": 1, "role": 1}))
+                print(f"DEBUG: All users in DB: {all_users}")
+                raise HTTPException(status_code=401, detail="Invalid email or password")
+            
+            print(f"DEBUG: User status: {user.get('status')}")
+            
+            if user.get("status") != "Active":
+                print(f"DEBUG: User account is inactive: {user.get('status')}")
+                raise HTTPException(status_code=401, detail="User account is inactive")
+            
+            # Verify password
+            password_valid = self.verify_password(login_data.password, user["password_hash"])
+            print(f"DEBUG: Password valid: {password_valid}")
+            
+            if not password_valid:
+                raise HTTPException(status_code=401, detail="Invalid email or password")
+            
+            # Create JWT token
+            token_data = {
+                "user_id": user["id"],
+                "email": user["email"],
+                "exp": datetime.utcnow() + timedelta(hours=24)
+            }
+            token = jwt.encode(token_data, JWT_SECRET, algorithm="HS256")
+            
+            # Return user data without password
+            user.pop('_id', None)
+            user.pop('password_hash', None)
+            
+            return JSONResponse(content={
+                "message": "Login successful",
+                "token": token,
+                "user": self.serialize_datetime(user)
+            })
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"Error during login: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            raise HTTPException(status_code=500, detail=str(e))
+
+    async def handle_get_users(self, request: Request):
+        try:
+            query_params = dict(request.query_params)
+            db_name = query_params.get("db_name", "railtel-db")
+            
+            db = self.mongo_client[db_name]
+            users_collection = db["users"]
+            
+            users_cursor = users_collection.find({}, {'password_hash': 0, '_id': 0}).sort('created_at', -1)
+            users_list = list(users_cursor)
+            
+            return JSONResponse(content={
+                "users": self.serialize_datetime(users_list),
+                "total": len(users_list)
+            })
+            
+        except Exception as e:
+            print(f"Error fetching users: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+    async def handle_update_user(self, request: Request):
+        try:
+            user_id = request.path_params["user_id"]
+            data = await request.json()
+            
+            db_name = data.get("db_name", "railtel-db")
+            db = self.mongo_client[db_name]
+            users_collection = db["users"]
+            
+            existing_user = users_collection.find_one({"id": user_id})
+            if not existing_user:
+                raise HTTPException(status_code=404, detail="User not found")
+            
+            update_data = {
+                "updated_at": datetime.now()
+            }
+            
+            if "name" in data:
+                update_data["name"] = data["name"]
+            if "email" in data:
+                email_check = users_collection.find_one({"email": data["email"], "id": {"$ne": user_id}})
+                if email_check:
+                    raise HTTPException(status_code=400, detail="Email already exists")
+                update_data["email"] = data["email"]
+            if "departments" in data:
+                update_data["departments"] = data["departments"]
+            if "role" in data:
+                update_data["role"] = data["role"]
+            if "status" in data:
+                update_data["status"] = data["status"]
+            if "password" in data and data["password"]:
+                if len(data["password"]) < 6:
+                    raise HTTPException(status_code=400, detail="Password must be at least 6 characters long")
+                update_data["password_hash"] = self.hash_password(data["password"])
+            
+            result = users_collection.update_one(
+                {"id": user_id},
+                {"$set": update_data}
+            )
+            
+            if result.modified_count == 0:
+                raise HTTPException(status_code=404, detail="User not found or no changes made")
+            
+            updated_user = users_collection.find_one({"id": user_id}, {'password_hash': 0, '_id': 0})
+            
+            return JSONResponse(content={
+                "message": "User updated successfully",
+                "user": self.serialize_datetime(updated_user)
+            })
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"Error updating user: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+    async def handle_delete_user(self, request: Request):
+        try:
+            user_id = request.path_params["user_id"]
+            query_params = dict(request.query_params)
+            db_name = query_params.get("db_name", "railtel-db")
+            
+            db = self.mongo_client[db_name]
+            users_collection = db["users"]
+            
+            result = users_collection.delete_one({"id": user_id})
+            
+            if result.deleted_count == 0:
+                raise HTTPException(status_code=404, detail="User not found")
+            
+            return JSONResponse(content={"message": "User deleted successfully"})
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"Error deleting user: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+    # Utility method
     def serialize_datetime(self, obj):
         if isinstance(obj, dict):
             return {k: self.serialize_datetime(v) for k, v in obj.items()}
@@ -1121,6 +1501,7 @@ class ConversationRAGService(ChatQnAService):
             return obj.isoformat()
         return obj
 
+    # Main start method - ONLY ONE VERSION
     def start(self):
         self.service = MicroService(
             self.__class__.__name__,
@@ -1132,12 +1513,32 @@ class ConversationRAGService(ChatQnAService):
             output_datatype=ConversationResponse,
         )
 
+        # Conversation routes
         self.service.add_route("/api/conversations/new", self.handle_new_conversation, methods=["POST"])
         self.service.add_route("/api/conversations/{conversation_id}", self.handle_chat_request, methods=["POST"])
         self.service.add_route("/api/conversations/{conversation_id}", self.handle_get_history, methods=["GET"])
         self.service.add_route("/api/conversations/{conversation_id}", self.handle_delete_conversation, methods=["DELETE"])
         self.service.add_route("/api/conversations", self.handle_list_conversations, methods=["GET"])
+        
+        # File management routes
+        self.service.add_route("/api/files", self.handle_get_uploaded_files, methods=["GET"])
+        self.service.add_route("/api/files/record", self.handle_record_file_upload, methods=["POST"])
+        
+        # User management routes
+        self.service.add_route("/api/auth/login", self.handle_login, methods=["POST"])
+        self.service.add_route("/api/users", self.handle_create_user, methods=["POST"])
+        self.service.add_route("/api/users", self.handle_get_users, methods=["GET"])
+        self.service.add_route("/api/users/{user_id}", self.handle_update_user, methods=["PUT"])
+        self.service.add_route("/api/users/{user_id}", self.handle_delete_user, methods=["DELETE"])
+
+        # Create default admin synchronously BEFORE starting the service
+        print("Creating default admin user...")
+        self.create_default_admin_sync()
+        
+        print("Starting service...")
         self.service.start()
+
+
 
 if __name__ == "__main__":
     conversation_service = ConversationRAGService(port=int(os.getenv("MEGA_SERVICE_PORT", 9000)))

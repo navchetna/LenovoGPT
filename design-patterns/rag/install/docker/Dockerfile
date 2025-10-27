@@ -1,28 +1,4 @@
-# FROM node:latest
-# ARG SERVER_URL
-
-# # Set the working directory in the container
-# WORKDIR /usr/src/app
-
-# # Install app dependencies
-# # A wildcard is used to ensure both package.json AND package-lock.json are copied
-# # where available (npm@5+)
-# COPY ui/package*.json ./
-
-# RUN npm install
-
-# # Bundle app source
-# COPY ui/ .
-
-# ENV NEXT_PUBLIC_SERVER_URL=$SERVER_URL
-# # Build your Next.js app for production
-# RUN npm run build
-
-# # Start the application
-# CMD ["npm", "start"]
-
 FROM node:20-alpine
-
 WORKDIR /usr/src/app
 
 # Install dependencies
@@ -32,8 +8,14 @@ RUN npm cache clean --force && npm ci --legacy-peer-deps
 # Bundle app source
 COPY ui/ .
 
+# Accept build arguments
 ARG SERVER_URL
-ENV NEXT_PUBLIC_SERVER_URL=$SERVER_URL
+ARG API_BASE_URL
+ARG DATAPREP_URL
+
+# Set environment variables for build time
+ENV NEXT_PUBLIC_API_BASE_URL=${API_BASE_URL:-${SERVER_URL}}
+ENV NEXT_PUBLIC_DATAPREP_URL=${DATAPREP_URL}
 
 RUN npm run build
 

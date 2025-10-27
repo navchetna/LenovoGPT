@@ -28,3 +28,9 @@ redis
 pymongo
 groq
 nltk
+tiktoken
+bcrypt>=3.2.0,<4.0.0
+passlib[bcrypt]>=1.7.4
+python-jose[cryptography]
+PyJWT==2.8.0
+

@@ -65,7 +65,7 @@ export default function LeftSidebar({
   const fetchConversations = async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get(`${CHAT_QNA_URL}/api/conversations?db_name=rag_db`);
+      const response = await axios.get(`${CHAT_QNA_URL}/api/conversations?db_name=lenovo-db`);
       const data = await response.data;
       console.log('Fetched conversations:', data);
       setConversations(data.conversations || []);
@@ -99,7 +99,7 @@ export default function LeftSidebar({
     if (!conversationToDelete) return;
     setIsDeleting(true);
     try {
-      await axios.delete(`${CHAT_QNA_URL}/api/conversations/${conversationToDelete}?db_name=rag_db`);
+      await axios.delete(`${CHAT_QNA_URL}/api/conversations/${conversationToDelete}?db_name=lenovo-db`);
       setConversations(prevConversations =>
         prevConversations.filter(conv => conv.conversation_id !== conversationToDelete)
       );
@@ -148,11 +148,11 @@ export default function LeftSidebar({
       textAlign: 'center',
       gap: 2
     }}>
-      <ChatIcon sx={{ fontSize: 48, color: '#6b7280', opacity: 0.6 }} />
-      <Typography variant="body1" sx={{ color: '#666' }}>
+      <ChatIcon sx={{ fontSize: 48, color: '#808080', opacity: 0.6 }} />
+      <Typography variant="body1" sx={{ color: '#b0b0b0' }}>
         No conversation history found
       </Typography>
-      <Typography variant="body2" sx={{ color: '#888', mb: 2 }}>
+      <Typography variant="body2" sx={{ color: '#808080', mb: 2 }}>
         Start a new chat to begin
       </Typography>
     </Box>
@@ -167,7 +167,7 @@ export default function LeftSidebar({
         sx={{
           width: isCollapsed ? 60 : 300,
           transition: 'width 0.3s ease-in-out',
-          backgroundColor: '#f8f9fa',
+          backgroundColor: '#2d2d2d',
           height: 'calc(100vh - 64px)',
           display: 'flex',
           flexDirection: 'column',
@@ -176,6 +176,7 @@ export default function LeftSidebar({
           top: '64px',
           overflow: 'hidden',
           borderRadius: 0,
+          borderRight: '1px solid rgba(227, 6, 19, 0.3)',
           zIndex: 1200,
         }}
       >
@@ -186,12 +187,14 @@ export default function LeftSidebar({
             right: -1,
             top: '50%',
             transform: 'translateY(-50%)',
-            backgroundColor: '#f8f9fa',
-            border: '1px solid #e0e0e0',
+            backgroundColor: '#2d2d2d',
+            border: '1px solid rgba(227, 6, 19, 0.3)',
             borderLeft: 'none',
             borderRadius: '0 8px 8px 0',
+            color: '#E30613',
             '&:hover': {
-              backgroundColor: '#f0f0f0',
+              backgroundColor: '#1a1a1a',
+              color: '#ff1a2e',
             },
             zIndex: 10,
             width: '20px',
@@ -210,23 +213,25 @@ export default function LeftSidebar({
           visibility: isCollapsed ? 'hidden' : 'visible',
         }}>
           {hasConversations && (
-            <Box sx={{ p: 2, borderBottom: '1px solid #e0e0e0' }}>
+            <Box sx={{ p: 2, borderBottom: '1px solid rgba(227, 6, 19, 0.3)' }}>
               <Tooltip title="Start a new chat" arrow>
                 <IconButton
                   onClick={() => onSelectConversation('')}
                   sx={{
-                    backgroundColor: '#6b7280',
+                    backgroundColor: '#E30613',
                     color: 'white',
                     width: '100%',
                     borderRadius: '8px',
                     transition: 'all 0.3s ease',
                     py: 1,
                     '&:hover': {
-                      backgroundColor: '#4b5563',
+                      backgroundColor: '#c9050f',
+                      transform: 'translateY(-1px)',
+                      boxShadow: '0 4px 12px rgba(227, 6, 19, 0.4)',
                     },
                   }}
                 >
-                  <AddIcon /> <Typography sx={{ ml: 1 }}>New Chat</Typography>
+                  <AddIcon /> <Typography sx={{ ml: 1, fontWeight: 600 }}>New Chat</Typography>
                 </IconButton>
               </Tooltip>
             </Box>
@@ -234,7 +239,7 @@ export default function LeftSidebar({
 
           {isLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-              <CircularProgress />
+              <CircularProgress sx={{ color: '#E30613' }} />
             </Box>
           ) : error ? (
             <Box sx={{ p: 2 }}>
@@ -242,6 +247,12 @@ export default function LeftSidebar({
                 severity="error"
                 sx={{
                   mb: 2,
+                  bgcolor: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  color: '#ff6b6b',
+                  '& .MuiAlert-icon': {
+                    color: '#ff6b6b'
+                  },
                   '& .MuiAlert-message': { width: '100%' }
                 }}
               >
@@ -254,8 +265,12 @@ export default function LeftSidebar({
                   mb: 2,
                   mx: 'auto',
                   display: 'block',
-                  borderColor: '#6b7280',
-                  color: '#6b7280'
+                  borderColor: '#E30613',
+                  color: '#E30613',
+                  '&:hover': {
+                    borderColor: '#ff1a2e',
+                    backgroundColor: 'rgba(227, 6, 19, 0.1)'
+                  }
                 }}
               >
                 Try Again
@@ -273,19 +288,18 @@ export default function LeftSidebar({
                 width: '6px',
               },
               '&::-webkit-scrollbar-track': {
-                background: '#f1f1f1',
+                background: '#1a1a1a',
               },
               '&::-webkit-scrollbar-thumb': {
-                background: '#888',
+                background: '#E30613',
                 borderRadius: '3px',
               },
               '&::-webkit-scrollbar-thumb:hover': {
-                background: '#555',
+                background: '#ff1a2e',
               },
             }}>
               {conversations.map((conversation) => {
                 const preview = getConversationPreview(conversation);
-                // const topic = topics.find(t => t.name === preview.context);
 
                 return (
                   <ListItemButton
@@ -299,33 +313,29 @@ export default function LeftSidebar({
                       p: 1.5,
                       flexDirection: 'column',
                       alignItems: 'flex-start',
-                      border: '1px solid #e0e0e0',
-                      backgroundColor: '#ffffff',
-                      transition: 'all 0.3s ease, color 0.2s ease',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                      transition: 'all 0.3s ease',
                       '&:hover': {
-                        background: 'linear-gradient(45deg, rgba(107, 114, 128, 0.2), rgba(156, 163, 175, 0.3))',
+                        background: 'rgba(227, 6, 19, 0.1)',
                         transform: 'translateX(4px)',
-                        boxShadow: '0 4px 12px rgba(156, 163, 175, 0.2)',
-                        color: '#6b7280',
+                        boxShadow: '0 4px 12px rgba(227, 6, 19, 0.2)',
+                        borderColor: '#E30613',
                       },
                       minHeight: '60px',
                       maxHeight: '80px',
                       '&.Mui-selected': {
-                        backgroundColor: 'rgba(107, 114, 128, 0.1)',
-                        borderColor: '#6b7280',
+                        backgroundColor: 'rgba(227, 6, 19, 0.15)',
+                        borderColor: '#E30613',
                         '&:hover': {
-                          background: 'linear-gradient(45deg, rgba(107, 114, 128, 0.3), rgba(156, 163, 175, 0.4))',
+                          background: 'rgba(227, 6, 19, 0.2)',
                         }
                       },
                       '& .MuiTypography-root': {
                         transition: 'color 0.2s ease',
                       },
-                      '&:hover .MuiTypography-root': {
-                        color: '#6b7280',
-                      },
                     }}
                   >
-
                     <Box sx={{
                       display: 'flex',
                       alignItems: 'center',
@@ -336,7 +346,7 @@ export default function LeftSidebar({
                       <Typography
                         sx={{
                           fontSize: '0.75rem',
-                          color: '#666',
+                          color: '#808080',
                           flexShrink: 0,
                         }}
                       >
@@ -350,12 +360,15 @@ export default function LeftSidebar({
                           px: 1,
                           py: 0.25,
                           flexShrink: 0,
+                          backgroundColor: 'rgba(227, 6, 19, 0.2)',
+                          border: '1px solid rgba(227, 6, 19, 0.5)',
                         }}
                       >
                         <Typography sx={{
                           fontSize: '0.65rem',
-                          fontWeight: 500,
+                          fontWeight: 600,
                           letterSpacing: '0.02em',
+                          color: '#E30613',
                         }}>
                           {preview.context}
                         </Typography>
@@ -369,6 +382,10 @@ export default function LeftSidebar({
                           padding: 0.5,
                           transition: 'opacity 0.2s',
                           flexShrink: 0,
+                          color: '#ff6b6b',
+                          '&:hover': {
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                          },
                           '.MuiListItemButton-root:hover &': {
                             opacity: 1,
                           }
@@ -381,7 +398,7 @@ export default function LeftSidebar({
                     <Typography
                       sx={{
                         fontSize: '0.85rem',
-                        color: '#333',
+                        color: '#ffffff',
                         width: '100%',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
@@ -418,10 +435,10 @@ export default function LeftSidebar({
                   onSelectConversation('');
                 }}
                 sx={{
-                  backgroundColor: '#6b7280',
+                  backgroundColor: '#E30613',
                   color: 'white',
                   '&:hover': {
-                    backgroundColor: '#4b5563',
+                    backgroundColor: '#c9050f',
                   },
                 }}
               >
@@ -435,22 +452,35 @@ export default function LeftSidebar({
       <Dialog
         open={deleteDialogOpen}
         onClose={!isDeleting ? closeDeleteDialog : undefined}
-        aria-labelledby="delete-dialog-title"
-        aria-describedby="delete-dialog-description"
+        PaperProps={{
+          sx: { bgcolor: '#2d2d2d', color: '#ffffff' }
+        }}
       >
-        <DialogTitle id="delete-dialog-title">
+        <DialogTitle 
+          sx={{ 
+            color: '#E30613', 
+            fontWeight: 600,
+            borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+          }}
+        >
           Delete Conversation?
         </DialogTitle>
-        <DialogContent>
-          <DialogContentText id="delete-dialog-description">
+        <DialogContent sx={{ mt: 2 }}>
+          <DialogContentText sx={{ color: '#b0b0b0' }}>
             Are you sure you want to delete this conversation? This action cannot be undone.
             {deletePreview && (
-              <Box sx={{ mt: 2, p: 1, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+              <Box sx={{ 
+                mt: 2, 
+                p: 1.5, 
+                bgcolor: 'rgba(227, 6, 19, 0.1)', 
+                borderRadius: 1,
+                border: '1px solid rgba(227, 6, 19, 0.3)'
+              }}>
                 <Typography
                   variant="body2"
                   sx={{
                     fontStyle: 'italic',
-                    color: '#555',
+                    color: '#ffffff',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     display: '-webkit-box',
@@ -464,20 +494,30 @@ export default function LeftSidebar({
             )}
           </DialogContentText>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)', p: 2 }}>
           <Button
             onClick={closeDeleteDialog}
-            color="primary"
             disabled={isDeleting}
+            sx={{
+              color: '#b0b0b0',
+              '&:hover': {
+                backgroundColor: 'rgba(255, 255, 255, 0.05)'
+              }
+            }}
           >
             Cancel
           </Button>
           <Button
             onClick={confirmDelete}
-            color="error"
             variant="contained"
             disabled={isDeleting}
-            startIcon={isDeleting ? <CircularProgress size={16} color="inherit" /> : <DeleteIcon />}
+            startIcon={isDeleting ? <CircularProgress size={16} sx={{ color: 'white' }} /> : <DeleteIcon />}
+            sx={{
+              backgroundColor: '#E30613',
+              '&:hover': {
+                backgroundColor: '#c9050f'
+              }
+            }}
           >
             {isDeleting ? 'Deleting...' : 'Delete'}
           </Button>

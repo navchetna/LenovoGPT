@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
@@ -34,8 +35,18 @@ import AttachFileIcon from '@mui/icons-material/AttachFile';
 import ImageIcon from '@mui/icons-material/Image';
 import TextSnippetIcon from '@mui/icons-material/TextSnippet';
 import CloseIcon from '@mui/icons-material/Close';
+import ComputerIcon from '@mui/icons-material/Computer';
 import { CHAT_QNA_URL } from '@/lib/constants';
-import AudioRecorder from './AudioRecorder';
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  departments: string[];
+  role: string;
+  status: string;
+  created_at: string;
+}
 
 interface Metrics {
   ttft: number;
@@ -81,13 +92,17 @@ interface ChatAreaProps {
   onSelectConversation: (id: string) => void;
   onConversationUpdated?: () => void;
   updateConversationList?: () => void;
+  currentDepartment: string;
+  currentUser?: User | null;
 }
 
 export default function ChatArea({
   conversationId,
   onSelectConversation,
   onConversationUpdated,
-  updateConversationList
+  updateConversationList,
+  currentDepartment,
+  currentUser
 }: ChatAreaProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [localMessages, setLocalMessages] = useState<Message[]>([]);
@@ -124,6 +139,7 @@ export default function ChatArea({
   useEffect(() => {
     scrollToBottom();
   }, [displayMessages]);
+
   useEffect(() => {
     scrollToBottom();
   }, [displayMessages, streamingContent]);
@@ -156,12 +172,10 @@ export default function ChatArea({
       setIsLoading(true);
       setErrorMessage(null);
 
-      const response = await axios.get(`${CHAT_QNA_URL}/api/conversations/${id}?db_name=rag_db`);
+      const response = await axios.get(`${CHAT_QNA_URL}/api/conversations/${id}?db_name=lenovo-db`);
       const data = response.data;
-      console.log('Loaded conversation data:', data);
 
       if (!data.history || !Array.isArray(data.history) || data.history.length === 0) {
-        console.warn('History is missing, empty, or not an array in conversation data', data);
         return;
       }
 
@@ -205,8 +219,6 @@ export default function ChatArea({
         }
       });
 
-      console.log('Formatted messages:', formattedMessages);
-
       if (formattedMessages.length > 0) {
         setMessages(formattedMessages);
         setLocalMessages([]);
@@ -246,7 +258,6 @@ export default function ChatArea({
         file: file,
       };
 
-      // Create preview for images
       if (file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -264,7 +275,6 @@ export default function ChatArea({
     setUploadedFiles(prev => [...prev, ...newFiles]);
     setIsUploading(false);
     
-    // Clear the input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -308,12 +318,10 @@ export default function ChatArea({
   const startNewConversation = async (userMessageContent: string): Promise<string | null> => {
     try {
       const response = await axios.post(`${CHAT_QNA_URL}/api/conversations/new`, {
-        db_name: 'rag_db'
+        db_name: 'lenovo-db'
       });
 
       const data = await response.data;
-      console.log('Created new conversation:', data);
-
       const newConversationId = data.conversation_id;
       setCurrentConversationId(newConversationId);
       onSelectConversation(newConversationId);
@@ -346,7 +354,6 @@ export default function ChatArea({
       formData.append('file', uploadedFile.file);
       
       try {
-        // Replace with your actual file upload endpoint
         const response = await axios.post(`${CHAT_QNA_URL}/api/upload`, formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
@@ -374,7 +381,6 @@ export default function ChatArea({
         let responseMetrics: Metrics | null = null;
         let sourcesFromResponse: Array<{ source: string; relevance_score: number; content: string; }> = [];
 
-        // Upload files if any
         let fileUrls: string[] = [];
         if (uploadedFiles.length > 0) {
           try {
@@ -399,11 +405,11 @@ export default function ChatArea({
 
         const requestBody: any = {
           question: messageContent,
-          db_name: "rag_db",
-          stream: true
+          db_name: "lenovo-db",
+          stream: true,
+          collection_name: currentDepartment.toUpperCase() 
         };
 
-        // Include file information in the request if files were uploaded
         if (fileUrls.length > 0) {
           requestBody.attachments = fileUrls;
           requestBody.files = uploadedFiles.map(f => ({
@@ -505,7 +511,7 @@ export default function ChatArea({
           )
         );
 
-        axios.get(`${CHAT_QNA_URL}/api/conversations/${targetConversationId}?db_name=rag_db`)
+        axios.get(`${CHAT_QNA_URL}/api/conversations/${targetConversationId}?db_name=lenovo-db`)
           .then(response => {
             if (response.data && response.data.history && response.data.history.length > 0) {
               const latestTurn = response.data.history.filter((turn: { question: string; sources?: any[] }) => 
@@ -530,7 +536,6 @@ export default function ChatArea({
             console.error("Error fetching conversation with sources:", error);
           });
 
-        // Clear uploaded files after successful send
         setUploadedFiles([]);
         setIsLoading(false);
         setStreamingMessageId(null);
@@ -667,17 +672,6 @@ export default function ChatArea({
     }));
   };
 
-  const handleTranscription = (text: string) => {
-    if (text.trim()) {
-      setInput(prev => {
-        if (prev.trim()) {
-          return `${prev.trim()} ${text.trim()}`;
-        }
-        return text.trim();
-      });
-    }
-  };
-
   return (
     <Box
       sx={{
@@ -686,10 +680,9 @@ export default function ChatArea({
         height: '100%',
         width: '100%',
         position: 'relative',
-        backgroundColor: '#f5f5f5',
+        background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%)',
       }}
     >
-      {/* Hidden file input */}
       <input
         ref={fileInputRef}
         type="file"
@@ -720,6 +713,16 @@ export default function ChatArea({
             pt: 4,
             pb: 2,
             gap: 1.5,
+            '&::-webkit-scrollbar': {
+              width: '8px',
+            },
+            '&::-webkit-scrollbar-track': {
+              background: '#1a1a1a',
+            },
+            '&::-webkit-scrollbar-thumb': {
+              background: '#E30613',
+              borderRadius: '4px',
+            },
           }}
         >
           {displayMessages.map((message, index) => (
@@ -739,7 +742,7 @@ export default function ChatArea({
                   <AccountCircleIcon
                     sx={{
                       fontSize: 32,
-                      color: '#0071C5',
+                      color: '#E30613',
                       alignSelf: 'flex-start',
                       mt: 1
                     }}
@@ -750,7 +753,8 @@ export default function ChatArea({
                       width: 32,
                       height: 32,
                       borderRadius: '50%',
-                      backgroundColor: 'rgb(245,245,245)',
+                      backgroundColor: 'rgba(227, 6, 19, 0.1)',
+                      border: '2px solid #E30613',
                       display: 'flex',
                       justifyContent: 'center',
                       alignItems: 'center',
@@ -758,10 +762,10 @@ export default function ChatArea({
                       mt: 1
                     }}
                   >
-                    <AutoAwesomeIcon
+                    <ComputerIcon
                       sx={{
-                        fontSize: 24,
-                        color: '#0071C5',
+                        fontSize: 20,
+                        color: '#E30613',
                       }}
                     />
                   </Box>
@@ -783,15 +787,16 @@ export default function ChatArea({
                         sx={{
                           p: 2,
                           maxWidth: '100%',
-                          borderRadius: 4,
-                          backgroundColor: '#e3f2fd',
+                          borderRadius: 3,
+                          backgroundColor: 'rgba(227, 6, 19, 0.1)',
+                          border: '1px solid rgba(227, 6, 19, 0.3)',
                           position: 'relative',
                         }}
                       >
                         <Typography
                           variant="body1"
                           sx={{
-                            color: '#333',
+                            color: '#ffffff',
                             lineHeight: 1.5,
                             whiteSpace: 'pre-wrap',
                           }}
@@ -800,7 +805,6 @@ export default function ChatArea({
                         </Typography>
                       </Paper>
 
-                      {/* Display attached files */}
                       {message.attachedFiles && message.attachedFiles.length > 0 && (
                         <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                           {message.attachedFiles.map((file) => (
@@ -810,10 +814,14 @@ export default function ChatArea({
                               label={`${file.name} (${formatFileSize(file.size)})`}
                               size="small"
                               sx={{
-                                backgroundColor: '#e3f2fd',
-                                border: '1px solid #1976d2',
+                                backgroundColor: 'rgba(227, 6, 19, 0.1)',
+                                border: '1px solid #E30613',
+                                color: '#ffffff',
                                 '& .MuiChip-label': {
                                   fontSize: '0.75rem',
+                                },
+                                '& .MuiChip-icon': {
+                                  color: '#E30613',
                                 },
                               }}
                             />
@@ -836,98 +844,39 @@ export default function ChatArea({
                           p: 2,
                           maxWidth: '100%',
                           width: '100%',
-                          borderRadius: 4,
-                          backgroundColor: '#fff',
+                          borderRadius: 3,
+                          backgroundColor: '#2d2d2d',
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
                           position: 'relative',
                         }}
                       >
-                        <Typography
-                          variant="body1"
-                          sx={{
-                            color: '#333',
-                            lineHeight: 1.5,
-                            whiteSpace: 'pre-wrap',
-                            mt: 0,
-                            mb: 0,
-                          }}
-                        >
-                          {message.isThinking ? (
-                            <Typography
-                              variant="body1"
-                              sx={{
-                                color: '#333',
-                                lineHeight: 1.5,
-                                whiteSpace: 'pre-wrap',
-                                display: 'flex',
-                                alignItems: 'center',
-                                m: 0,
-                                p: 0,
-                              }}
-                            >
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Box
-                                  sx={{
-                                    display: 'inline-flex',
-                                    gap: '3px',
-                                    position: 'relative',
-                                    top: '2px',
-                                  }}
-                                >
-                                  {[0, 1, 2].map((i) => (
-                                    <Box
-                                      key={i}
-                                      component="span"
-                                      sx={{
-                                        width: '3px',
-                                        height: '3px',
-                                        borderRadius: '50%',
-                                        backgroundColor: 'rgba(25, 118, 210, 0.6)',
-                                        animation: `thinkingDot 1.2s infinite ease-in-out ${i * 0.15}s`,
-                                        '@keyframes thinkingDot': {
-                                          '0%, 100%': {
-                                            transform: 'translateY(0)',
-                                            opacity: 0.5,
-                                          },
-                                          '50%': {
-                                            transform: 'translateY(-2px)',
-                                            opacity: 0.9,
-                                          },
-                                        },
-                                      }}
-                                    />
-                                  ))}
-                                </Box>
-                              </Box>
-                            </Typography>
-                          ) : (
-                            <Typography
-                              variant="body1"
-                              sx={{
-                                color: '#333',
-                                lineHeight: 1.5,
-                                whiteSpace: 'pre-wrap',
-                                m: 0,
-                                p: 0,
-                                '& p': { marginBottom: '0.8em', marginTop: 0 },
-                                '& p:last-child': { marginBottom: 0 },
-                              }}
-                            >
-                              {message.isStreaming ? (
-                                <>
-                                  {message.content.split('\n').map((paragraph, idx) => (
-                                    paragraph.trim() ? <p key={idx}>{paragraph}</p> : null
-                                  ))}
-                                </>
-                              ) : (
-                                <>
-                                  {message.content.split('\n\n').map((paragraph, idx) => (
-                                    <p key={idx}>{paragraph}</p>
-                                  ))}
-                                </>
-                              )}
-                            </Typography>
-                          )}
-                        </Typography>
+                      <Typography
+  variant="body1"
+  sx={{
+    color: '#ffffff',
+    lineHeight: 1.5,
+    whiteSpace: 'pre-wrap',
+    m: 0,
+    p: 0,
+    '& p': { marginBottom: '0.8em', marginTop: 0 },
+    '& p:last-child': { marginBottom: 0 },
+  }}
+>
+  {message.isStreaming ? (
+    <>
+      {message.content.split('\n').map((paragraph, idx) => (
+        paragraph.trim() ? <p key={idx}>{paragraph}</p> : null
+      ))}
+    </>
+  ) : (
+    <>
+      {message.content.split('\n\n').map((paragraph, idx) => (
+        <p key={idx}>{paragraph}</p>
+      ))}
+    </>
+  )}
+</Typography>
+                        
 
                         <Box sx={{
                           display: 'flex',
@@ -942,7 +891,13 @@ export default function ChatArea({
                                   <IconButton
                                     onClick={() => handleCopy(message.content, message.id)}
                                     size="small"
-                                    color={copiedMessageId === message.id ? "primary" : "default"}
+                                    sx={{
+                                      color: copiedMessageId === message.id ? "#E30613" : "#808080",
+                                      '&:hover': {
+                                        backgroundColor: 'rgba(227, 6, 19, 0.1)',
+                                        color: '#E30613'
+                                      }
+                                    }}
                                   >
                                     <ContentCopyIcon fontSize="small" />
                                   </IconButton>
@@ -952,7 +907,13 @@ export default function ChatArea({
                                   <IconButton
                                     size="small"
                                     onClick={() => handleQualityChange(message.id, 'good')}
-                                    color={message.quality === 'good' ? 'primary' : 'default'}
+                                    sx={{
+                                      color: message.quality === 'good' ? '#10b981' : '#808080',
+                                      '&:hover': {
+                                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                        color: '#10b981'
+                                      }
+                                    }}
                                   >
                                     <ThumbUpIcon fontSize="small" />
                                   </IconButton>
@@ -962,7 +923,13 @@ export default function ChatArea({
                                   <IconButton
                                     size="small"
                                     onClick={() => handleQualityChange(message.id, 'bad')}
-                                    color={message.quality === 'bad' ? 'error' : 'default'}
+                                    sx={{
+                                      color: message.quality === 'bad' ? '#ef4444' : '#808080',
+                                      '&:hover': {
+                                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                        color: '#ef4444'
+                                      }
+                                    }}
                                   >
                                     <ThumbDownIcon fontSize="small" />
                                   </IconButton>
@@ -973,6 +940,13 @@ export default function ChatArea({
                                     <IconButton
                                       size="small"
                                       onClick={() => toggleReferences(message.id)}
+                                      sx={{
+                                        color: '#808080',
+                                        '&:hover': {
+                                          backgroundColor: 'rgba(227, 6, 19, 0.1)',
+                                          color: '#E30613'
+                                        }
+                                      }}
                                     >
                                       <DescriptionIcon fontSize="small" />
                                     </IconButton>
@@ -1007,11 +981,8 @@ export default function ChatArea({
                                   </Box>
                                 }
                               >
-                                <IconButton size="small">
-                                  <InfoOutlinedIcon 
-                                    fontSize="small" 
-                                    sx={{ mt: 1, color: 'text.secondary' }} 
-                                  />
+                                <IconButton size="small" sx={{ color: '#808080' }}>
+                                  <InfoOutlinedIcon fontSize="small" />
                                 </IconButton>
                               </Tooltip>
                             </Box>
@@ -1026,13 +997,13 @@ export default function ChatArea({
                     <Collapse in={showReferences[message.id]} sx={{ mt: 1, maxWidth: '100%' }}>
                       <Box
                         sx={{
-                          backgroundColor: '#f8f9fa',
+                          backgroundColor: '#1a1a1a',
                           borderRadius: 2,
                           p: 2,
-                          border: '1px solid #e0e0e0',
+                          border: '1px solid rgba(227, 6, 19, 0.3)',
                         }}
                       >
-                        <Typography variant="subtitle2" sx={{ mb: 1, color: '#2c2c2c' }}>
+                        <Typography variant="subtitle2" sx={{ mb: 1, color: '#E30613', fontWeight: 600 }}>
                           Sources
                         </Typography>
                         {message.sources?.map((source, index) => (
@@ -1040,7 +1011,7 @@ export default function ChatArea({
                             <Typography
                               variant="subtitle2"
                               sx={{
-                                color: '#1976d2',
+                                color: '#E30613',
                                 fontSize: '0.8rem',
                                 fontWeight: 600,
                                 mb: 0.5
@@ -1051,7 +1022,7 @@ export default function ChatArea({
                             <Typography
                               variant="body2"
                               sx={{
-                                color: '#666',
+                                color: '#b0b0b0',
                                 fontSize: '0.8rem',
                                 lineHeight: 1.4
                               }}
@@ -1079,18 +1050,17 @@ export default function ChatArea({
                   height: "80vh",
                   textAlign: "center",
                   px: 3,
-                  backgroundColor: "#f5f5f5",
                 }}
               >
                 <Box
                   sx={{
                     maxWidth: 700,
                     width: "100%",
-                    backgroundColor: "#fff",
+                    backgroundColor: "#2d2d2d",
                     borderRadius: 4,
                     p: 5,
-                    boxShadow: "0 8px 32px rgba(59, 130, 246, 0.12)",
-                    border: "1px solid rgba(59, 130, 246, 0.08)",
+                    boxShadow: "0 8px 32px rgba(0, 0, 0, 0.5)",
+                    border: "1px solid rgba(227, 6, 19, 0.3)",
                     position: "relative",
                     overflow: "hidden",
                     "&::before": {
@@ -1100,21 +1070,24 @@ export default function ChatArea({
                       left: 0,
                       right: 0,
                       height: "4px",
-                      background: "linear-gradient(90deg, #3b82f6, #8b5cf6, #06b6d4)",
+                      background: "linear-gradient(90deg, #E30613, #ff1a2e)",
                       borderRadius: "4px 4px 0 0",
                     },
                   }}
                 >
-                  {/* Header Section */}
                   <Box sx={{ mb: 5 }}>
+                    <Box sx={{ mb: 3 }}>
+                      <svg width="120" height="30" viewBox="0 0 120 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <text x="0" y="24" fontFamily="Arial, sans-serif" fontSize="24" fontWeight="700" fill="#E30613" letterSpacing="-0.5">
+                          Lenovo
+                        </text>
+                      </svg>
+                    </Box>
                     <Typography 
                       variant="h3" 
                       sx={{ 
                         mb: 2, 
-                        background: "linear-gradient(135deg, #3b82f6, #0d47a1)",
-                        backgroundClip: "text",
-                        WebkitBackgroundClip: "text",
-                        WebkitTextFillColor: "transparent",
+                        color: '#ffffff',
                         fontWeight: "800",
                         fontSize: { xs: "2rem", md: "2.5rem" },
                         letterSpacing: "-0.02em",
@@ -1125,7 +1098,7 @@ export default function ChatArea({
                     <Typography 
                       variant="h6" 
                       sx={{ 
-                        color: "#0d47a1", 
+                        color: "#b0b0b0", 
                         fontWeight: "400",
                         fontSize: "1.1rem",
                         maxWidth: 500,
@@ -1133,16 +1106,15 @@ export default function ChatArea({
                         lineHeight: 1.6,
                       }}
                     >
-                      Get instant, intelligent answers from your AI-powered enterprise assistant
+                      Get instant, intelligent answers from your AI-powered server documentation assistant
                     </Typography>
                   </Box>
 
-                  {/* Call to Action */}
                   <Box sx={{ mt: 4 }}>
                     <Typography 
                       variant="body1" 
                       sx={{ 
-                        color: "#64748b", 
+                        color: "#808080", 
                         fontSize: "1rem",
                         fontWeight: "500",
                       }}
@@ -1157,18 +1129,17 @@ export default function ChatArea({
 
           {isLoading && !streamingEnabled && !streamingMessageId && (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-              <CircularProgress size={24} />
+              <CircularProgress size={24} sx={{ color: '#E30613' }} />
             </Box>
           )}
           <div ref={messagesEndRef} />
         </Box>
 
-        {/* File Upload Area */}
         {uploadedFiles.length > 0 && (
           <Box
             sx={{
-              backgroundColor: '#fff',
-              borderTop: '1px solid #e5e7eb',
+              backgroundColor: '#2d2d2d',
+              borderTop: '1px solid rgba(227, 6, 19, 0.3)',
               px: { xs: 2, sm: 4 },
               py: 2,
               maxWidth: '1100px',
@@ -1176,7 +1147,7 @@ export default function ChatArea({
               width: '100%',
             }}
           >
-            <Typography variant="subtitle2" sx={{ mb: 1, color: '#666' }}>
+            <Typography variant="subtitle2" sx={{ mb: 1, color: '#b0b0b0' }}>
               Attached files ({uploadedFiles.length}):
             </Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
@@ -1189,10 +1160,20 @@ export default function ChatArea({
                   deleteIcon={<CloseIcon />}
                   size="small"
                   sx={{
-                    backgroundColor: '#f0f9ff',
-                    border: '1px solid #0ea5e9',
+                    backgroundColor: 'rgba(227, 6, 19, 0.1)',
+                    border: '1px solid #E30613',
+                    color: '#ffffff',
                     '& .MuiChip-label': {
                       fontSize: '0.75rem',
+                    },
+                    '& .MuiChip-icon': {
+                      color: '#E30613',
+                    },
+                    '& .MuiChip-deleteIcon': {
+                      color: '#E30613',
+                      '&:hover': {
+                        color: '#ff1a2e',
+                      },
                     },
                   }}
                 />
@@ -1201,12 +1182,11 @@ export default function ChatArea({
           </Box>
         )}
 
-        {/* Input Area */}
         <Box
           sx={{
-            backgroundColor: '#fff',
-            borderTop: '2px solid #e5e7eb',
-            boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.04)',
+            backgroundColor: '#2d2d2d',
+            borderTop: '2px solid #E30613',
+            boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.3)',
             px: { xs: 2, sm: 4 },
             py: { xs: 2, sm: 3 },
           }}
@@ -1236,24 +1216,25 @@ export default function ChatArea({
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     borderRadius: 2.5,
-                    backgroundColor: '#fafafa',
-                    border: '1px solid #e0e0e0',
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    color: '#ffffff',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
                     transition: 'all 0.2s ease',
                     '& fieldset': {
                       border: 'none',
                     },
                     '&:hover': {
-                      backgroundColor: '#f5f5f5',
-                      border: '1px solid #d0d0d0',
+                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                      border: '1px solid rgba(227, 6, 19, 0.5)',
                     },
                     '&.Mui-focused': {
-                      backgroundColor: '#fff',
-                      border: '2px solid #1976d2',
-                      boxShadow: '0 0 0 3px rgba(25, 118, 210, 0.1)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      border: '2px solid #E30613',
+                      boxShadow: '0 0 0 3px rgba(227, 6, 19, 0.2)',
                     },
                     '&.Mui-disabled': {
-                      backgroundColor: '#f0f0f0',
-                      color: '#999',
+                      backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                      color: '#808080',
                     },
                   },
                   '& .MuiInputBase-input': {
@@ -1261,13 +1242,16 @@ export default function ChatArea({
                     px: 2,
                     fontSize: '0.95rem',
                     lineHeight: 1.4,
+                    '&::placeholder': {
+                      color: '#808080',
+                      opacity: 1,
+                    },
                   },
                 }}
               />
             </Box>
             
             <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', pb: 0.5 }}>
-              {/* File Upload Button */}
               <Tooltip title="Attach files" arrow>
                 <Box>
                   <IconButton
@@ -1276,23 +1260,23 @@ export default function ChatArea({
                     sx={{
                       width: 44,
                       height: 44,
-                      backgroundColor: '#f8f9fa',
-                      border: '1px solid #e0e0e0',
-                      color: '#666',
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      color: '#b0b0b0',
                       transition: 'all 0.2s ease',
                       '&:hover': {
-                        backgroundColor: '#e3f2fd',
-                        borderColor: '#1976d2',
-                        color: '#1976d2',
+                        backgroundColor: 'rgba(227, 6, 19, 0.1)',
+                        borderColor: '#E30613',
+                        color: '#E30613',
                       },
                       '&.Mui-disabled': {
-                        backgroundColor: 'rgba(0, 0, 0, 0.06)',
-                        color: 'rgba(0, 0, 0, 0.26)',
+                        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                        color: '#5a5a5a',
                       },
                     }}
                   >
                     {isUploading ? (
-                      <CircularProgress size={20} />
+                      <CircularProgress size={20} sx={{ color: '#E30613' }} />
                     ) : (
                       <AddIcon fontSize="small" />
                     )}
@@ -1300,7 +1284,6 @@ export default function ChatArea({
                 </Box>
               </Tooltip>
 
-              {/* File Upload Menu */}
               <Menu
                 anchorEl={uploadMenuAnchor}
                 open={Boolean(uploadMenuAnchor)}
@@ -1309,12 +1292,21 @@ export default function ChatArea({
                   '& .MuiPaper-root': {
                     borderRadius: 2,
                     minWidth: 200,
-                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+                    backgroundColor: '#2d2d2d',
+                    border: '1px solid rgba(227, 6, 19, 0.3)',
+                  },
+                  '& .MuiMenuItem-root': {
+                    color: '#ffffff',
+                    '&:hover': {
+                      backgroundColor: 'rgba(227, 6, 19, 0.1)',
+                    },
+                  },
+                  '& .MuiListItemIcon-root': {
+                    color: '#E30613',
                   },
                 }}
               >
-                
-                
                 <MenuItem onClick={() => triggerFileInput()}>
                   <ListItemIcon>
                     <AttachFileIcon fontSize="small" />
@@ -1323,7 +1315,6 @@ export default function ChatArea({
                 </MenuItem>
               </Menu>
 
-              
               <Tooltip title="Send message" arrow>
                 <Box>
                   <IconButton
@@ -1332,21 +1323,21 @@ export default function ChatArea({
                     sx={{
                       width: 44,
                       height: 44,
-                      backgroundColor: '#1976d2',
+                      backgroundColor: '#E30613',
                       color: 'white',
-                      boxShadow: '0 2px 8px rgba(25, 118, 210, 0.3)',
+                      boxShadow: '0 2px 8px rgba(227, 6, 19, 0.5)',
                       transition: 'all 0.2s ease',
                       '&:hover': {
-                        backgroundColor: '#1565c0',
+                        backgroundColor: '#c9050f',
                         transform: 'translateY(-1px)',
-                        boxShadow: '0 4px 12px rgba(25, 118, 210, 0.4)',
+                        boxShadow: '0 4px 12px rgba(227, 6, 19, 0.6)',
                       },
                       '&:active': {
                         transform: 'translateY(0)',
                       },
                       '&.Mui-disabled': {
-                        backgroundColor: 'rgba(0, 0, 0, 0.12)',
-                        color: 'rgba(0, 0, 0, 0.26)',
+                        backgroundColor: '#5a5a5a',
+                        color: '#808080',
                         boxShadow: 'none',
                         transform: 'none',
                       },

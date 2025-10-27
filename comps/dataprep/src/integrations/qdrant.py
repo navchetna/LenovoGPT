@@ -107,7 +107,7 @@ class OpeaQdrantDataprep(OpeaComponent):
         pass
 
     def get_table_description(self, item: Table):
-        server_host_ip = os.getenv("SERVER_HOST_IP", "localhost")
+        server_host_ip = os.getenv("LLM_SERVER_HOST_IP", "localhost")
         server_port = os.getenv("LLM_SERVER_PORT", 8000)
         model_name = os.getenv("LLM_MODEL_ID")
         use_model_param = os.getenv("LLM_USE_MODEL_PARAM", "false").lower() == "true"
@@ -147,6 +147,11 @@ class OpeaQdrantDataprep(OpeaComponent):
             data["file_name"] = ""
 
         response = requests.post(url, headers=headers, json=data)
+        import sys
+        print(f"DEBUG - Request URL: {url}", file=sys.stderr)
+        print(f"DEBUG - Request data: {data}", file=sys.stderr)
+        print(f"DEBUG - Response status: {response.status_code}", file=sys.stderr)
+        print(f"DEBUG - Response text: '{response.text}'", file=sys.stderr)
         response_data = json.loads(response.text)
         return response_data['choices'][0]['message']['content']
 

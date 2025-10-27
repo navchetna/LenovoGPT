@@ -347,7 +347,7 @@ triton==3.4.0
 typer==0.16.1
 types-pillow==10.2.0.20240822
 types-requests==2.32.4.20250809
-typing==3.10.0.0
+typing
 typing-extensions==4.14.1
 typing-inspect==0.9.0
 typing-inspection==0.4.1
@@ -375,3 +375,6 @@ xxhash==3.5.0
 yarl==1.20.1
 zipp==3.23.0
 zstandard==0.23.0
+# marker-pdf @ git+https://github.com/navchetna/marker.git@30f5f2635bd7fde246e6bdbd1118af3464d1cb64
+# surya-ocr @ git+https://github.com/navchetna/surya.git@fbad4d9224d85791e4ab0cdeeff09e192faa8bb1
+# intel_extension_for_pytorch==2.8.0

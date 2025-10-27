@@ -5,11 +5,10 @@ import { useChat } from 'ai/react';
 import { Box } from '@mui/material';
 import { ApiType } from '@/types/api';
 import Navbar from '@/components/Navbar';
-import Navbar_admin from '@/components/Navbar_admin'; // <-- correct import
+import Navbar_admin from '@/components/Navbar_admin';
 import LeftSidebar from '@/components/LeftSidebar';
 import RightSidebar from '@/components/RightSidebar';
 import ChatArea from '@/components/ChatArea';
-import ChatAreaAdmin from '@/components/ChatArea_Admin';
 import FileManagerPage from '@/components/DocumentFileManager';
 import SearchLanding from '@/components/SearchLanding';
 import SearchResults from '@/components/SearchResults';
@@ -17,11 +16,23 @@ import LandingPage from '@/components/LandingPage_Admin';
 import AdminLandingPage from '@/components/LandingPage';
 import LoginForm from '@/components/LoginForm';
 
-const mockUser = {
-  name: 'John Doe',
-  email: 'john.doe@example.com',
-  avatarUrl: '/placeholder.svg',
-};
+// Updated interfaces to match backend response
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  departments: string[];
+  role: string;
+  status: string;
+  created_at: string;
+}
+
+interface LoginResponse {
+  message: string;
+  token: string;
+  user: User;
+  userType: 'admin' | 'user';
+}
 
 const Home: React.FC = () => {
   const [currentContext, setCurrentContext] = useState<string>('General');
@@ -35,55 +46,61 @@ const Home: React.FC = () => {
   const [selectedApi, setSelectedApi] = useState<ApiType>("semantic_scholar");
   const [searchQuery, setSearchQuery] = useState<string>("");
   
-  // Authentication states
+  // Authentication states - updated to use backend data
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentDepartment, setCurrentDepartment] = useState<string>('');
-  const [currentUser, setCurrentUser] = useState<string>('');
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [userType, setUserType] = useState<'admin' | 'user' | null>(null);
+  const [authToken, setAuthToken] = useState<string | null>(null);
 
   // Check authentication status on component mount
   useEffect(() => {
     const loginStatus = localStorage.getItem('isLoggedIn');
     const authStatus = localStorage.getItem('isAuthenticated');
     const department = localStorage.getItem('department');
-    const user = localStorage.getItem('user');
+    const userData = localStorage.getItem('userData');
     const savedUserType = localStorage.getItem('userType');
+    const token = localStorage.getItem('authToken');
     
-    if (loginStatus === 'true') {
-      setIsLoggedIn(true);
-      setUserType(savedUserType as 'admin' | 'user');
-      if (authStatus === 'true' && department && user) {
-        setIsAuthenticated(true);
-        setCurrentDepartment(department);
-        setCurrentUser(user);
+    if (loginStatus === 'true' && token && userData) {
+      try {
+        const parsedUser = JSON.parse(userData);
+        setIsLoggedIn(true);
+        setCurrentUser(parsedUser);
+        setUserType(savedUserType as 'admin' | 'user');
+        setAuthToken(token);
+        
+        if (authStatus === 'true' && department) {
+          setIsAuthenticated(true);
+          setCurrentDepartment(department);
+        }
+      } catch (error) {
+        console.error('Error parsing stored user data:', error);
+        // Clear corrupted data
+        localStorage.clear();
       }
     }
   }, []);
 
-  // Handle login form submission
-  const handleLogin = (credentials: { email: string; password: string }) => {
-    let loginUserType: 'admin' | 'user' | null = null;
-    
-    // Hardcoded credentials check
-    if (credentials.email === 'admin@railtel.com' && credentials.password === 'admin123') {
-      loginUserType = 'admin';
-    } else if (credentials.email === 'user1@railtel.com' && credentials.password === 'user123') {
-      loginUserType = 'user';
-    } else {
-      // Invalid credentials - you can add error handling here
-      alert('Invalid credentials. Please try again.');
-      return;
+  // Handle login form submission - updated to work with backend
+  const handleLogin = (response: LoginResponse) => {
+    try {
+      setUserType(response.userType);
+      setIsLoggedIn(true);
+      setCurrentUser(response.user);
+      setAuthToken(response.token);
+      
+      // Store in localStorage for persistence
+      localStorage.setItem('isLoggedIn', 'true');
+      localStorage.setItem('userData', JSON.stringify(response.user));
+      localStorage.setItem('userType', response.userType);
+      localStorage.setItem('authToken', response.token);
+      
+    } catch (error) {
+      console.error('Error handling login response:', error);
+      // Handle login error - could show error message to user
     }
-    
-    const userName = credentials.email.split('@')[0];
-    setUserType(loginUserType);
-    setIsLoggedIn(true);
-    setCurrentUser(userName);
-    
-    localStorage.setItem('isLoggedIn', 'true');
-    localStorage.setItem('user', userName);
-    localStorage.setItem('userType', loginUserType);
   };
 
   // Handle department selection from landing page
@@ -117,15 +134,12 @@ const Home: React.FC = () => {
     setIsLoggedIn(false);
     setIsAuthenticated(false);
     setCurrentDepartment('');
-    setCurrentUser('');
+    setCurrentUser(null);
     setUserType(null);
+    setAuthToken(null);
     
     // Clear localStorage
-    localStorage.removeItem('isLoggedIn');
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('department');
-    localStorage.removeItem('user');
-    localStorage.removeItem('userType');
+    localStorage.clear();
     
     // Reset other states
     setSelectedConversation(null);
@@ -166,20 +180,27 @@ const Home: React.FC = () => {
 
   // Step 2: Show appropriate landing page based on user type
   if (!isAuthenticated) {
-    // In your index.tsx file, update this line:
     return userType === 'admin' 
       ? <AdminLandingPage onAuthenticated={handleDepartmentAuthentication} onLogout={handleLogout} />
-      : <LandingPage onAuthenticated={handleDepartmentAuthentication} onLogout={handleLogout} />;
+      // : <LandingPage onAuthenticated={handleDepartmentAuthentication} onLogout={handleLogout} />;
+      : <LandingPage onAuthenticated={handleDepartmentAuthentication} onLogout={handleLogout} user={currentUser || undefined} />
   }
 
   // Step 3: Show main application if both logged in and department selected
   const leftSidebarWidth = isSidebarCollapsed ? 60 : 300;
   const rightSidebarWidth = 76;
 
-  // Update mockUser with current user info
-  const authenticatedUser = {
-    name: currentUser,
-    email: `${currentUser}@railtel.com`,
+  // Update authenticatedUser with current user info from backend
+  const authenticatedUser = currentUser ? {
+    name: currentUser.name,
+    email: currentUser.email,
+    avatarUrl: '/placeholder.svg',
+    department: currentDepartment,
+    role: currentUser.role,
+    departments: currentUser.departments
+  } : {
+    name: 'Unknown User',
+    email: 'unknown@railtel.com',
     avatarUrl: '/placeholder.svg',
     department: currentDepartment
   };
@@ -268,20 +289,13 @@ const Home: React.FC = () => {
                   onSelectConversation={setSelectedConversation}
                   onConversationUpdated={handleConversationUpdated}
                   updateConversationList={() => setRefreshCounter(prev => prev + 1)}
+                  currentDepartment={currentDepartment}
+                  currentUser={currentUser}
                 />
               )
             )}
           </Box>
         </Box>
-        {/* <RightSidebar
-          messages={messages}
-          currentContext={selectedConversation || ''}
-          onContextChange={setSelectedConversation}
-          onTogglePDFViewer={handleTogglePDFViewer}
-          isPDFViewerOpen={isPDFViewerOpen}
-          onToggleSearch={handleToggleSearch}
-          isSearchOpen={isSearchOpen}
-        /> */}
       </Box>
     </Box>
   );

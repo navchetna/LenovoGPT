@@ -125,7 +125,7 @@ services:
       groq-service:
         condition: service_started
     ports:
-      - "8912:8888"
+      - "8888:8888"
     environment:
       - no_proxy=${no_proxy}
       - https_proxy=${https_proxy}

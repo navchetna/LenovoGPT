@@ -1383,7 +1383,7 @@
 //                         letterSpacing: "-0.02em",
 //                       }}
 //                     >
-//                       Upload RailTel Documents
+//                       Upload Documents
 //                     </Typography>
 //                     <Typography
 //                       variant="h6"

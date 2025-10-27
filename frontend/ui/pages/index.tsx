@@ -200,7 +200,7 @@ const Home: React.FC = () => {
     departments: currentUser.departments
   } : {
     name: 'Unknown User',
-    email: 'unknown@railtel.com',
+    email: 'unknown@lenovo.com',
     avatarUrl: '/placeholder.svg',
     department: currentDepartment
   };

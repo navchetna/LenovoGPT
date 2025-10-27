@@ -21,14 +21,14 @@ export https_proxy=${your_http_proxy}
 export QDRANT_HOST=${host_ip}
 export QDRANT_PORT=6333
 export COLLECTION_NAME=rag-qdrant
-export PYTHONPATH=/home/intel/Ervin/RailTel-Lenovo
+export PYTHONPATH=/home/intel/Ervin/Lenovo
 ```
 
 ### Build Docker Image
 
 ```bash
 cd ../../../../
-docker build -t railtel-lenovo-dataprep:latest --build-arg https_proxy=$https_proxy --build-arg http_proxy=$http_proxy -f comps/dataprep/src/Dockerfile .
+docker build -t lenovo-dataprep:latest --build-arg https_proxy=$https_proxy --build-arg http_proxy=$http_proxy -f comps/dataprep/src/Dockerfile .
 ```
 
 ### Run Docker with CLI

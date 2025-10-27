@@ -63,7 +63,7 @@ parent_dir = os.path.dirname(current_file_path)
 #######################################################
 QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT = int(os.getenv("QDRANT_PORT", 6333))
-QDRANT_EMBED_DIMENSION = os.getenv("QDRANT_EMBED_DIMENSION", 384) #switch to 384 for all-MiniLM-L6-v2
+QDRANT_EMBED_DIMENSION = os.getenv("QDRANT_EMBED_DIMENSION", 768)
 QDRANT_INDEX_NAME = os.getenv("QDRANT_INDEX_NAME", "rag-qdrant")
 
 

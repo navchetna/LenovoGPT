@@ -35,7 +35,7 @@ logger = CustomLogger("opea_dataprep_qdrant")
 logflag = os.getenv("LOGFLAG", False)
 
 # Embedding model
-EMBED_MODEL = os.getenv("EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+EMBED_MODEL = os.getenv("EMBED_MODEL", "BAAI/bge-base-en-v1.5")
 
 # Qdrant configuration
 QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
@@ -214,7 +214,7 @@ class OpeaQdrantDataprep(OpeaComponent):
         if not self.collection_exists(collection_name):
             self.client.create_collection(
                 collection_name=collection_name,
-                vectors_config=models.VectorParams(size=384, distance=models.Distance.COSINE),
+                vectors_config=models.VectorParams(size=768, distance=models.Distance.COSINE),
             )
 
         batch_size = 32
@@ -242,7 +242,7 @@ class OpeaQdrantDataprep(OpeaComponent):
     ):
         """Ingest files/links content into qdrant database.
 
-        Save in the format of vector[384].
+        Save in the format of vector[768].
         Returns '{"status": 200, "message": "Data preparation succeeded"}' if successful.
         Args:
             input (DataprepRequest): Model containing the following parameters:

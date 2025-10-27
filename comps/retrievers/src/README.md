@@ -46,7 +46,7 @@ export RETRIEVER_COMPONENT_NAME="OPEA_RETRIEVER_QDRANT"
 
 ```bash
 cd ../../../
-docker build -t railtel-lenovo-retriever:latest --build-arg https_proxy=$https_proxy --build-arg http_proxy=$http_proxy -f comps/retrievers/src/Dockerfile .
+docker build -t lenovo-retriever:latest --build-arg https_proxy=$https_proxy --build-arg http_proxy=$http_proxy -f comps/retrievers/src/Dockerfile .
 ```
 
 ### 2.3 Run Docker with CLI (Option A)
@@ -75,10 +75,10 @@ curl http://${your_ip}:7000/v1/health_check \
 
 ### 3.2 Consume Embedding Service
 
-To consume the Retriever Microservice, you can generate a mock embedding vector of length 384 with Python.
+To consume the Retriever Microservice, you can generate a mock embedding vector of length 768 with Python.
 
 ```bash
-export your_embedding=$(python -c "import random; embedding = [random.uniform(-1, 1) for _ in range(384)]; print(embedding)")
+export your_embedding=$(python -c "import random; embedding = [random.uniform(-1, 1) for _ in range(768)]; print(embedding)")
 curl http://${your_ip}:7000/v1/retrieval \
   -X POST \
   -d "{\"text\":\"What is the revenue of Nike in 2023?\",\"embedding\":${your_embedding}}" \
@@ -87,7 +87,7 @@ curl http://${your_ip}:7000/v1/retrieval \
 
 Retriever from a specific Qdrant collection:
 ```bash
-export your_embedding=$(python -c "import random; embedding = [random.uniform(-1, 1) for _ in range(384)]; print(embedding)")
+export your_embedding=$(python -c "import random; embedding = [random.uniform(-1, 1) for _ in range(768)]; print(embedding)")
 curl http://${your_ip}:7000/v1/retrieval  \
   -X POST  \
   -d "{\"text\":\"Can LLMs generate ideas?\",\"embedding\":${your_embedding},\"collection_name\": \"your-collection\"}"  \

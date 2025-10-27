@@ -19,9 +19,10 @@ import {
   Lock as LockIcon,
   Email as EmailIcon
 } from "@mui/icons-material";
+import { CHAT_QNA_URL } from "../lib/constants";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:9000';
-const DB_NAME = 'railtel-db';
+const API_BASE_URL = CHAT_QNA_URL || 'http://localhost:8888';
+const DB_NAME = 'lenovo-db';
 
 interface User {
   id: string;

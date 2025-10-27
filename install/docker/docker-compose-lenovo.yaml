@@ -1,6 +1,5 @@
 # Copyright (C) 2024 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
-# 5d081333-2c77-414d-b218-632d488b353d
 version: "3.8"
 
 services:
@@ -19,7 +18,7 @@ services:
     ports:
       - "27017:27017"
   groq-service:
-    image: navchetna/groq:latest
+    image: ai-agents/groq:latest
     container_name: groq-service
     ports:
       - "5099:8000"
@@ -48,22 +47,9 @@ services:
       HF_HUB_DISABLE_PROGRESS_BARS: 1
       HF_HUB_ENABLE_HF_TRANSFER: 0
     command: --model-id ${RERANK_MODEL_ID} --auto-truncate
-
-
   backend-service:
-    build:
-      context: ../../
-      dockerfile: ./comps/Dockerfile
-      target: comps-base
-      args:
-        - http_proxy=http://proxy-dmz.intel.com:912
-        - https_proxy=http://proxy-dmz.intel.com:912
-        - HTTP_PROXY=http://proxy-dmz.intel.com:912
-        - HTTPS_PROXY=http://proxy-dmz.intel.com:912
-        - no_proxy=${no_proxy}
+    image: ai-agents/rag/backend:latest
     container_name: backend-service
-
-    
     ports:
       - "${CHATQNA_BACKEND_PORT:-8888}:${CHATQNA_BACKEND_PORT:-8888}"
     depends_on:
@@ -80,7 +66,7 @@ services:
       - MONGO_PASSWORD=${MONGO_PASSWORD:-agents}
       - MONGO_HOST=mongodb
       - MONGO_PORT=27017
-      - MONGO_DBNAME=${MONGO_DBNAME:-railtel-db}
+      - MONGO_DBNAME=${MONGO_DBNAME:-lenovo-db}
       - EMBEDDING_SERVER_HOST_IP=tei-embedding-service
       - EMBEDDING_SERVER_PORT=80
       - RETRIEVER_SERVICE_HOST_IP=retriever
@@ -97,28 +83,15 @@ services:
     restart: unless-stopped
 
   ui-service:
-    build:
-      context: /home/intel/Akshit/Lenovo/design-patterns/rag
-      dockerfile: install/docker/Dockerfile
-      args:
-        - API_BASE_URL=http://10.138.186.78:${CHATQNA_BACKEND_PORT:-8888}
-        - SERVER_URL=http://10.138.186.78:${CHATQNA_BACKEND_PORT:-8888}
-        - DATAPREP_URL=http://10.138.186.78:6043            
-        - http_proxy=http://proxy-dmz.intel.com:912
-        - https_proxy=http://proxy-dmz.intel.com:912
-        - HTTP_PROXY=http://proxy-dmz.intel.com:912
-        - HTTPS_PROXY=http://proxy-dmz.intel.com:912
-        - no_proxy=${no_proxy}
+    image: ai-agents/rag/ui:latest
     container_name: ui-service
     ports:
       - "3000:3000"
     depends_on:
       - backend-service
     environment:
-      - NEXT_PUBLIC_SERVER_URL=http://10.138.186.78:${CHATQNA_BACKEND_PORT:-8888}
+      - NEXT_PUBLIC_SERVER_URL=http://10.138.190.67:${CHATQNA_BACKEND_PORT:-8888}
     restart: unless-stopped
-
-
   tei-embedding-service:
     image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.7
     container_name: tei-embedding-server
@@ -134,7 +107,7 @@ services:
       HUGGINGFACEHUB_API_TOKEN: ${HF_TOKEN}
     command: --model-id ${EMBEDDING_MODEL_ID} --auto-truncate
   retriever:
-    image: lenovo-retriever:latest
+    image: railtel-lenovo-retriever:latest
     container_name: retriever-qdrant-server
     depends_on:
       - qdrant-vector-db
@@ -154,7 +127,7 @@ services:
       RETRIEVER_COMPONENT_NAME: "OPEA_RETRIEVER_QDRANT"
     restart: unless-stopped
   dataprep-qdrant-service:
-    image: lenovo-dataprep:latest
+    image: railtel-lenovo-dataprep:latest
     container_name: dataprep-qdrant-server
     depends_on:
       - qdrant-vector-db
@@ -162,18 +135,16 @@ services:
     ports:
       - "6043:5000"
     volumes:
-      - ./dataprep-cache:/home/user/.cache
-      - ./dataprep-static:/usr/local/lib/python3.11/site-packages/static
-      - ./dataprep-output:/home/user/comps/dataprep/src/out
+      - "${MODEL_CACHE}:/home/user/.cache"
     environment:
       no_proxy: "localhost,127.0.0.1,qdrant-vector-db,tei-embedding-service, groq-service, huggingface.co,*.huggingface.co"  # ADD/UPDATE THIS
       http_proxy: ${http_proxy}
       https_proxy: ${https_proxy}
       QDRANT_HOST: qdrant-vector-db
       QDRANT_PORT: 6333
-      LLM_SERVER_HOST_IP: groq-service  # Add this
+      LLM_SERVER_HOST_IP: groq-service
       LLM_SERVER_PORT: 8000   
-      LLM_MODEL_ID: llama-3.1-8b-instant      # Add this
+      LLM_MODEL_ID: llama-3.1-8b-instant
       LLM_USE_MODEL_PARAM: "true"           
       # QDRANT_INDEX_NAME: rag-qdrant
       # INDEX_NAME: rag-qdrant

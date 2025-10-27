@@ -33,6 +33,10 @@ import ErrorIcon from "@mui/icons-material/Error"
 import CloudUploadIcon from "@mui/icons-material/CloudUpload"
 import PendingIcon from "@mui/icons-material/Pending"
 import ComputerIcon from "@mui/icons-material/Computer"
+import { CHAT_QNA_URL, DATAPREP_URL } from "@/lib/constants"
+
+console.log("CHAT_QNA_URL:", CHAT_QNA_URL)
+console.log("DATAPREP_URL:", DATAPREP_URL)
 
 type Category = "GENERAL" | "HCI" | "AI"
 type UploadStatus = "pending" | "uploading" | "success" | "error"
@@ -64,8 +68,7 @@ export default function FileManagerPage() {
   const [isLoading, setIsLoading] = useState(true)
 
   // Configuration
-  const BACKEND_URL = "http://10.138.186.78:8888"
-  const DB_NAME = "railtel-db"
+  const DB_NAME = "lenovo-db"
 
   useEffect(() => {
     fetchUploadedFiles()
@@ -74,7 +77,7 @@ export default function FileManagerPage() {
   const fetchUploadedFiles = async () => {
     try {
       setIsLoading(true)
-      const response = await fetch(`${BACKEND_URL}/api/files?db_name=${DB_NAME}`)
+      const response = await fetch(`${CHAT_QNA_URL}/api/files?db_name=${DB_NAME}`)
       
       if (!response.ok) {
         throw new Error(`Failed to fetch files: ${response.status}`)
@@ -110,7 +113,7 @@ export default function FileManagerPage() {
 
   const recordFileUpload = async (fileName: string, collectionName: string, fileSize: string) => {
     try {
-      const response = await fetch(`${BACKEND_URL}/api/files/record`, {
+      const response = await fetch(`${CHAT_QNA_URL}/api/files/record`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -142,7 +145,7 @@ export default function FileManagerPage() {
       formData.append("files", file)
       formData.append("collection_name", collectionName)
 
-      const response = await fetch("http://10.138.186.78:6043/v1/dataprep/ingest", {
+      const response = await fetch(`${DATAPREP_URL}/v1/dataprep/ingest`, {
         method: "POST",
         body: formData,
       })

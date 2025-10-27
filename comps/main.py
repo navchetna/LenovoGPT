@@ -41,7 +41,7 @@ MONGO_PASSWORD = os.getenv("MONGO_PASSWORD")
 MONGO_HOST = os.getenv("MONGO_HOST", "localhost")
 MONGO_PORT = os.getenv("MONGO_PORT", "27017")
 MONGO_DB = os.getenv("MONGO_DB", "rag_db")
-MEGA_SERVICE_PORT = int(os.getenv("MEGA_SERVICE_PORT", 9001))
+MEGA_SERVICE_PORT = int(os.getenv("MEGA_SERVICE_PORT", 8888))
 GUARDRAIL_SERVICE_HOST_IP = os.getenv("GUARDRAIL_SERVICE_HOST_IP", "0.0.0.0")
 GUARDRAIL_SERVICE_PORT = int(os.getenv("GUARDRAIL_SERVICE_PORT", 80))
 EMBEDDING_SERVER_HOST_IP = os.getenv("EMBEDDING_SERVER_HOST_IP", "0.0.0.0")
@@ -724,7 +724,7 @@ class ConversationRAGService(ChatQnAService):
     def create_default_admin_sync(self):
         """Create default admin user if none exists (synchronous version)"""
         try:
-            db = self.mongo_client['railtel-db']
+            db = self.mongo_client['lenovo-db']
             users_collection = db["users"]
             
             # Check if any admin user exists
@@ -735,7 +735,7 @@ class ConversationRAGService(ChatQnAService):
                 default_admin = {
                     "id": str(uuid4()),
                     "name": "System Administrator",
-                    "email": "admin@railtel.com",
+                    "email": "admin@lenovo.com",
                     "password_hash": self.hash_password("admin123"),
                     "departments": ["hr", "finance", "operations"],
                     "role": "admin",
@@ -746,7 +746,7 @@ class ConversationRAGService(ChatQnAService):
                 
                 users_collection.insert_one(default_admin)
                 print("✅ Default admin user created:")
-                print("   Email: admin@railtel.com")
+                print("   Email: admin@lenovo.com")
                 print("   Password: admin123")
                 print("   Please change this password after first login!")
             else:
@@ -1286,7 +1286,7 @@ class ConversationRAGService(ChatQnAService):
             data = await request.json()
             user_data = UserCreate.parse_obj(data)
             
-            db_name = data.get("db_name", "railtel-db")
+            db_name = data.get("db_name", "lenovo-db")
             db = self.mongo_client[db_name]
             users_collection = db["users"]
             
@@ -1333,7 +1333,7 @@ class ConversationRAGService(ChatQnAService):
             login_data = UserLogin.parse_obj(data)
             print(f"DEBUG: Parsed login data - email: {login_data.email}")
             
-            db_name = data.get("db_name", "railtel-db")
+            db_name = data.get("db_name", "lenovo-db")
             print(f"DEBUG: Using database: {db_name}")
             
             db = self.mongo_client[db_name]
@@ -1396,7 +1396,7 @@ class ConversationRAGService(ChatQnAService):
     async def handle_get_users(self, request: Request):
         try:
             query_params = dict(request.query_params)
-            db_name = query_params.get("db_name", "railtel-db")
+            db_name = query_params.get("db_name", "lenovo-db")
             
             db = self.mongo_client[db_name]
             users_collection = db["users"]
@@ -1418,7 +1418,7 @@ class ConversationRAGService(ChatQnAService):
             user_id = request.path_params["user_id"]
             data = await request.json()
             
-            db_name = data.get("db_name", "railtel-db")
+            db_name = data.get("db_name", "lenovo-db")
             db = self.mongo_client[db_name]
             users_collection = db["users"]
             
@@ -1473,7 +1473,7 @@ class ConversationRAGService(ChatQnAService):
         try:
             user_id = request.path_params["user_id"]
             query_params = dict(request.query_params)
-            db_name = query_params.get("db_name", "railtel-db")
+            db_name = query_params.get("db_name", "lenovo-db")
             
             db = self.mongo_client[db_name]
             users_collection = db["users"]
@@ -1541,6 +1541,6 @@ class ConversationRAGService(ChatQnAService):
 
 
 if __name__ == "__main__":
-    conversation_service = ConversationRAGService(port=int(os.getenv("MEGA_SERVICE_PORT", 9000)))
+    conversation_service = ConversationRAGService(port=int(os.getenv("MEGA_SERVICE_PORT", 8888)))
     conversation_service.add_remote_service()
     conversation_service.start()

@@ -31,7 +31,7 @@ export MONGO_USERNAME=agents
 export MONGO_PASSWORD=agents
 export MONGO_HOST=localhost
 export MONGO_PORT=27017
-export MONGO_DBNAME=railtel-db
+export MONGO_DBNAME=lenovo-db
 #----------------------------------------------------------------
 
 export MEGA_SERVICE_PORT=8888

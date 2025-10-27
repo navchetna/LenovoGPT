@@ -503,8 +503,6 @@ mdit-py-plugins==0.5.0 ; python_full_version >= '3.13'
     # via panel
 mdurl==0.1.2
     # via markdown-it-py
-milvus-lite==2.5.1 ; sys_platform != 'win32'
-    # via pymilvus
 ml-dtypes==0.4.1
     # via
     #   jax
@@ -682,8 +680,6 @@ param==2.2.1 ; python_full_version >= '3.13'
     #   pyviz-comms
 parso==0.8.5 ; python_full_version >= '3.13'
     # via jedi
-pathway==0.3.3 ; python_full_version < '3.13'
-    # via -r ./comps/retrievers/src/requirements.in
 pathway==0.26.0 ; python_full_version >= '3.13'
     # via -r ./comps/retrievers/src/requirements.in
 patsy==1.0.1
@@ -810,10 +806,6 @@ pygments==2.19.2
     #   rich
 pyjwt==2.10.1
     # via python-arango
-pymilvus==2.5.6
-    # via
-    #   -r ./comps/retrievers/src/requirements.in
-    #   langchain-milvus
 pymupdf==1.26.4
     # via -r ./comps/retrievers/src/requirements.in
 pynndescent==0.5.13

@@ -129,12 +129,13 @@ interface ApiUpdateUserData {
   role?: string;
   status?: string;
 }
+import { CHAT_QNA_URL } from '@/lib/constants';
 
 // API service functions
-const API_BASE_URL = 'http://10.138.186.78:8888/api';
+const API_BASE_URL =  `${CHAT_QNA_URL}/api`;
 
 const userService = {
-  async fetchUsers(dbName: string = 'railtel-db'): Promise<User[]> {
+  async fetchUsers(dbName: string = 'lenovo-db'): Promise<User[]> {
     const response = await fetch(`${API_BASE_URL}/users?db_name=${dbName}`);
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -144,7 +145,7 @@ const userService = {
     return data.users || [];
   },
 
-  async createUser(userData: ApiUserData, dbName: string = 'railtel-db'): Promise<User> {
+  async createUser(userData: ApiUserData, dbName: string = 'lenovo-db'): Promise<User> {
     const response = await fetch(`${API_BASE_URL}/users`, {
       method: 'POST',
       headers: {
@@ -163,7 +164,7 @@ const userService = {
     return data.user;
   },
 
-  async updateUser(userId: string, userData: ApiUpdateUserData, dbName: string = 'railtel-db'): Promise<User> {
+  async updateUser(userId: string, userData: ApiUpdateUserData, dbName: string = 'lenovo-db'): Promise<User> {
     const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
       method: 'PUT',
       headers: {
@@ -182,7 +183,7 @@ const userService = {
     return data.user;
   },
 
-  async deleteUser(userId: string, dbName: string = 'railtel-db'): Promise<{ message: string }> {
+  async deleteUser(userId: string, dbName: string = 'lenovo-db'): Promise<{ message: string }> {
     const response = await fetch(`${API_BASE_URL}/users/${userId}?db_name=${dbName}`, {
       method: 'DELETE',
     });

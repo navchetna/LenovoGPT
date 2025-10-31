@@ -35,9 +35,6 @@ import PendingIcon from "@mui/icons-material/Pending"
 import ComputerIcon from "@mui/icons-material/Computer"
 import { CHAT_QNA_URL, DATAPREP_URL } from "@/lib/constants"
 
-console.log("CHAT_QNA_URL:", CHAT_QNA_URL)
-console.log("DATAPREP_URL:", DATAPREP_URL)
-
 type Category = "GENERAL" | "HCI" | "AI"
 type UploadStatus = "pending" | "uploading" | "success" | "error"
 
